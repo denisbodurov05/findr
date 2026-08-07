@@ -1,0 +1,8 @@
+.git
+node_modules
+**/node_modules
+apps/api/target
+apps/api/.m2
+**/.env
+**/.env.*
+!**/.env.example

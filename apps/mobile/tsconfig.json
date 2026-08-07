@@ -8,6 +8,9 @@
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "@findr/types": [
+        "../../libs/types/src/index.ts"
       ]
     }
   },

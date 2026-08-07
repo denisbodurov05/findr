@@ -1,6 +1,6 @@
 import { AxiosInstance } from "axios";
 
-import { Product, ProductsByCategory } from "@/types/domain";
+import { Product, ProductsByCategory } from "@findr/types";
 
 function normalizeProduct(product: Product): Product {
   return {

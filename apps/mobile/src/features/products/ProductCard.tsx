@@ -11,7 +11,7 @@ import Animated, {
 
 import { colors, fonts, radius, shadows, spacing } from "@/config/theme";
 import type { TranslationKey } from "@/i18n/translations";
-import { Product } from "@/types/domain";
+import { Product } from "@findr/types";
 import { useTranslation } from "@/providers/I18nProvider";
 import { AppIcon } from "@/ui/AppIcon";
 

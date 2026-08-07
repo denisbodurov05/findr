@@ -11,7 +11,7 @@ import { AppIcon } from "@/ui/AppIcon";
 import { BrandLogo } from "@/ui/BrandLogo";
 import { Button } from "@/ui/Button";
 import { ScreenState } from "@/ui/ScreenState";
-import type { StoreSummary } from "@/types/domain";
+import type { StoreSummary } from "@findr/types";
 
 export function StoreSelectScreen() {
   const { user } = useAuth();

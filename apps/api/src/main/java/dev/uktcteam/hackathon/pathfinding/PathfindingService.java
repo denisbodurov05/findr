@@ -1,22 +1,21 @@
 package dev.uktcteam.hackathon.pathfinding;
 
+import dev.uktcteam.hackathon.entities.itemcoordinate.ItemCoordinateRepository;
 import dev.uktcteam.hackathon.entities.product.ProductDto;
 import dev.uktcteam.hackathon.entities.product.ProductService;
 import dev.uktcteam.hackathon.entities.store.StoreRepository;
 import dev.uktcteam.hackathon.pathfinding.logic.CoordinateMatrix;
-import dev.uktcteam.hackathon.pathfinding.logic.HashMapUtils;
 import dev.uktcteam.hackathon.pathfinding.logic.Pair;
 import dev.uktcteam.hackathon.pathfinding.logic.RouteOptimizer;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.context.annotation.DependsOn;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.awt.*;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -24,31 +23,15 @@ public class PathfindingService {
 
     private final RouteOptimizer routeOptimizer;
     private final CoordinateMatrix coordinateMatrix;
-    private final HashMapUtils hashMapUtils;
     private final ProductService productService;
     private final StoreRepository storeRepository;
+    private final ItemCoordinateRepository itemCoordinateRepository;
 
-    private HashMap<Pair, Integer> shortestDistances;
-    private HashMap<Pair, Integer> productToCheckoutDistances;
-    private HashMap<String, Integer> entranceToProductsDistances;
-    private HashMap<String, Integer> exitToCheckoutsDistances;
-
+    private final ConcurrentHashMap<Long, StoreRouteData> routeDataCache = new ConcurrentHashMap<>();
 
     @PostConstruct
-    @DependsOn("hashMapUtils")
-    public void init() {
-
-        shortestDistances = hashMapUtils
-                .extractDistancePairHashMapFromFile("src/main/resources/algorithm-caches/shortestDistances.json");
-
-        productToCheckoutDistances = hashMapUtils
-                .extractDistancePairHashMapFromFile("src/main/resources/algorithm-caches/productToCheckoutDistances.json");
-
-        entranceToProductsDistances = hashMapUtils
-                .extractDistanceHashMapFromFile("src/main/resources/algorithm-caches/entranceToProductsDistances.json");
-
-        exitToCheckoutsDistances = hashMapUtils
-                .extractDistanceHashMapFromFile("src/main/resources/algorithm-caches/exitToCheckoutsDistances.json");
+    public void warmUp() {
+        storeRepository.findAll().forEach(store -> getRouteData(store.getId()));
     }
 
     public PathfindDto findPath(Long storeId, String[] products) {
@@ -57,27 +40,36 @@ public class PathfindingService {
             throw new EntityNotFoundException("Store not found");
         }
 
+        StoreRouteData routeData = getRouteData(storeId);
+
+        // Only route through products that actually exist in the store layout.
+        Set<String> placedProducts = routeData.entranceToProductsDistances().keySet();
+        String[] requestedProducts = Arrays.stream(products)
+                .filter(placedProducts::contains)
+                .toArray(String[]::new);
+
         String entrance = "EN";
 
         String[] goldenEggs = { "P107", "P310", "P204", "P19", "P279" };
 
-        List<String> checkouts = new ArrayList<String>(exitToCheckoutsDistances.keySet());
+        List<String> checkouts = new ArrayList<>(routeData.exitToCheckoutsDistances().keySet());
 
         String exit = "EX";
 
 
-        ArrayList<String> shortestRoute = routeOptimizer.findShortestRoute(entrance, exit, products, checkouts,
-                shortestDistances, productToCheckoutDistances, entranceToProductsDistances, exitToCheckoutsDistances);
+        ArrayList<String> shortestRoute = routeOptimizer.findShortestRoute(entrance, exit, requestedProducts, checkouts,
+                routeData.shortestDistances(), routeData.productToCheckoutDistances(), routeData.entranceToProductsDistances(),
+                routeData.exitToCheckoutsDistances());
 
-        shortestRoute = routeOptimizer.insertBestGoldenEgg(shortestRoute, goldenEggs, shortestDistances);
+        shortestRoute = routeOptimizer.insertBestGoldenEgg(shortestRoute, goldenEggs, routeData.shortestDistances());
 
-        shortestRoute = routeOptimizer.twoOpt(shortestRoute, shortestDistances, productToCheckoutDistances,
-                entranceToProductsDistances, exitToCheckoutsDistances);
+        shortestRoute = routeOptimizer.twoOpt(shortestRoute, routeData.shortestDistances(), routeData.productToCheckoutDistances(),
+                routeData.entranceToProductsDistances(), routeData.exitToCheckoutsDistances());
 
-        int totalDistance = routeOptimizer.calculateRouteDistance(shortestRoute, shortestDistances, productToCheckoutDistances,
-                entranceToProductsDistances, exitToCheckoutsDistances);
+        int totalDistance = routeOptimizer.calculateRouteDistance(shortestRoute, routeData.shortestDistances(),
+                routeData.productToCheckoutDistances(), routeData.entranceToProductsDistances(), routeData.exitToCheckoutsDistances());
 
-        ArrayList<List<int[]>> shortestRoutePath = routeOptimizer.getShortestRoutePath(coordinateMatrix.extractMatrix(), shortestRoute);
+        ArrayList<List<int[]>> shortestRoutePath = routeOptimizer.getShortestRoutePath(routeData.matrix(), shortestRoute);
 
         TwoPointPathDto[] pathfind = new TwoPointPathDto[shortestRoutePath.size()];
         for (int i = 0; i < shortestRoutePath.size(); i++) {
@@ -116,7 +108,7 @@ public class PathfindingService {
             }
 
             productId = shortestRoute.get(i).substring(1);
-            ProductDto product = productService.getProductById(Long.parseLong(productId)); // or productRepository.findById(productId)
+            ProductDto product = productService.getProductById(Long.parseLong(productId));
             sorted[i] = product;
         }
 
@@ -130,5 +122,32 @@ public class PathfindingService {
         return pathfindDto;
     }
 
+    public void invalidateCache(Long storeId) {
+        routeDataCache.remove(storeId);
+    }
 
+    private StoreRouteData getRouteData(Long storeId) {
+        return routeDataCache.computeIfAbsent(storeId, this::buildRouteData);
+    }
+
+    private StoreRouteData buildRouteData(Long storeId) {
+        String[][] matrix = coordinateMatrix.buildMatrix(itemCoordinateRepository.findByStoreId(storeId));
+
+        return new StoreRouteData(
+                matrix,
+                coordinateMatrix.findShortestDistancesBetweenProducts(matrix),
+                coordinateMatrix.findShortestDistancesBetweenProductsAndCheckouts(matrix),
+                coordinateMatrix.findShortestDistancesFromEntranceToProducts(matrix),
+                coordinateMatrix.findShortestDistancesFromExitToCheckouts(matrix)
+        );
+    }
+
+    private record StoreRouteData(
+            String[][] matrix,
+            HashMap<Pair, Integer> shortestDistances,
+            HashMap<Pair, Integer> productToCheckoutDistances,
+            HashMap<String, Integer> entranceToProductsDistances,
+            HashMap<String, Integer> exitToCheckoutsDistances
+    ) {
+    }
 }

@@ -12,7 +12,7 @@ import Animated, {
 
 import { colors, radius } from "@/config/theme";
 import { getCellColor } from "@/features/map/mapColors";
-import { PathfindResult, Point, StoreMap } from "@/types/domain";
+import { PathfindResult, Point, StoreMap } from "@findr/types";
 
 const { width: screenWidth } = Dimensions.get("window");
 const gridRows = 20;

@@ -5,7 +5,7 @@ import { useCatalog } from "@/providers/CatalogProvider";
 import { useTranslation } from "@/providers/I18nProvider";
 import { getPath, getStoreMap } from "@/services/routingService";
 import { useAuthenticatedApi } from "@/services/useAuthenticatedApi";
-import { PathfindResult, StoreMap } from "@/types/domain";
+import { PathfindResult, StoreMap } from "@findr/types";
 import { getErrorMessage } from "@/utils/errors";
 
 export function useRoutePlan() {

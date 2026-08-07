@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { TranslationKey } from "@/i18n/translations";
 import { useCatalog } from "@/providers/CatalogProvider";
 import { useTranslation } from "@/providers/I18nProvider";
-import { ProductsByCategory } from "@/types/domain";
+import { ProductsByCategory } from "@findr/types";
 
 export function useProducts() {
   const { t } = useTranslation();

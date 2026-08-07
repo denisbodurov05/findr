@@ -19,7 +19,7 @@ import {
   signOut as signOutFromFirebase,
 } from "@/services/authService";
 import { getErrorMessage } from "@/utils/errors";
-import { User } from "@/types/domain";
+import { User } from "@findr/types";
 import { TranslationKey } from "@/i18n/translations";
 import { useTranslation } from "@/providers/I18nProvider";
 

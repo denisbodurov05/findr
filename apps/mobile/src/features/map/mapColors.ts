@@ -1,5 +1,5 @@
 import { colors } from "@/config/theme";
-import { StoreCell } from "@/types/domain";
+import { StoreCell } from "@findr/types";
 
 const categoryGroups = {
   drinks: new Set([

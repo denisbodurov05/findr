@@ -9,7 +9,7 @@ import {
 } from "firebase/auth";
 
 import { firebaseAuth } from "@/config/firebase";
-import { AuthSession, User } from "@/types/domain";
+import { AuthSession, User } from "@findr/types";
 
 function toUser(user: FirebaseUser): User {
   return {

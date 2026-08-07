@@ -1,20 +1,14 @@
 package dev.uktcteam.hackathon.pathfinding.logic;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import dev.uktcteam.hackathon.entities.itemcoordinate.ItemCoordinate;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.*;
 
 @Service
 public class CoordinateMatrix {
 
-    @Autowired
-    private HashMapUtils hashMapUtils;
-
-    public String[][] extractMatrix() {
+    public String[][] buildMatrix(List<ItemCoordinate> coordinates) {
         String[][] matrix = new String[41][21];
 
         for (int i = 0; i < 41; i++) {
@@ -23,64 +17,31 @@ public class CoordinateMatrix {
             }
         }
 
-        String csvFile = "src/main/resources/csv-data/placement.csv";
-        String line;
-        String csvSplitBy = ",";
+        for (ItemCoordinate coordinate : coordinates) {
+            int x = coordinate.getX();
+            int y = coordinate.getY();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(csvFile))) {
-            br.readLine();
+            if (x < 0 || x >= 41 || y < 0 || y >= 21) {
+                continue;
+            }
 
-            while ((line = br.readLine()) != null) {
-                String[] data = line.split(csvSplitBy);
-
-                int x = Integer.parseInt(data[1]);
-                int y = Integer.parseInt(data[2]);
-
-                if (x >= 0 && x < 41 && y >= 0 && y < 21) {
-                    matrix[x][y] = data[0];
+            if (coordinate.isProduct()) {
+                matrix[x][y] = "P" + coordinate.getProduct().getId();
+            } else if (coordinate.isCheckout()) {
+                boolean selfCheckout = "self_checkout".equals(coordinate.getCheckout().getName());
+                matrix[x][y] = (selfCheckout ? "CA" : "S") + coordinate.getId();
+            } else if (coordinate.isTrafficFlow()) {
+                switch (coordinate.getTrafficFlow().getName()) {
+                    case "entry" -> matrix[x][y] = "EN";
+                    case "exit" -> matrix[x][y] = "EX";
+                    case "blocked_path" -> matrix[x][y] = "BL";
+                    default -> {
+                    }
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
 
         return matrix;
-    }
-
-    public ArrayList<Coordinate> findRouteBetween(String start, String end,
-                                                  HashMap<Coordinate, Integer> shortestDistances,
-                                                  HashMap<String, Coordinate> coordinates) {
-        ArrayList<Coordinate> routeCoordinates = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
-        PriorityQueue<Coordinate> queue = new PriorityQueue<>(
-                Comparator.comparingInt(coordinate -> coordinate.distance));
-
-        queue.add(new Coordinate(start, start, 0));
-
-        while (!queue.isEmpty()) {
-            Coordinate current = queue.poll();
-
-            if (visited.contains(current.point2)) {
-                continue;
-            }
-            visited.add(current.point2);
-            routeCoordinates.add(coordinates.get(current.point2));
-
-            if (current.point2.equals(end)) {
-                break;
-            }
-
-            for (Map.Entry<Coordinate, Integer> entry : shortestDistances.entrySet()) {
-                Coordinate coordinate = entry.getKey();
-                int distance = entry.getValue();
-
-                if (coordinate.point1.equals(current.point2) && !visited.contains(coordinate.point2)) {
-                    queue.add(new Coordinate(coordinate.point1, coordinate.point2, current.distance + distance));
-                }
-            }
-        }
-
-        return routeCoordinates;
     }
 
     public HashMap<String, int[]> findProducts(String[][] matrix) {
@@ -316,28 +277,5 @@ public class CoordinateMatrix {
         }
 
         return distances;
-    }
-
-    public void saveRoutesToFiles() {
-        String[][] matrix = extractMatrix();
-
-        HashMap<Pair, Integer> shortestDistances = findShortestDistancesBetweenProducts(matrix);
-        hashMapUtils.saveHashMapToFile(shortestDistances, "src/main/resources/algorithm-caches/shortestDistances.json");
-
-        HashMap<Pair, Integer> productToCheckoutDistances = findShortestDistancesBetweenProductsAndCheckouts(matrix);
-        hashMapUtils.saveHashMapToFile(productToCheckoutDistances,
-                "src/main/resources/algorithm-caches/productToCheckoutDistances.json");
-
-        HashMap<String, Integer> entranceToProductsDistances = findShortestDistancesFromEntranceToProducts(matrix);
-        hashMapUtils.saveHashMapToFile(entranceToProductsDistances,
-                "src/main/resources/algorithm-caches/entranceToProductsDistances.json");
-
-        HashMap<String, Integer> exitToCheckoutsDistances = findShortestDistancesFromExitToCheckouts(matrix);
-        hashMapUtils.saveHashMapToFile(exitToCheckoutsDistances,
-                "src/main/resources/algorithm-caches/exitToCheckoutsDistances.json");
-    }
-
-    public void main(String[] args) {
-        saveRoutesToFiles();
     }
 }

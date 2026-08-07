@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { colors, fonts, spacing } from "@/config/theme";
 import type { TranslationKey } from "@/i18n/translations";
-import { Product } from "@/types/domain";
+import { Product } from "@findr/types";
 import { ProductCard } from "@/features/products/ProductCard";
 import { useTranslation } from "@/providers/I18nProvider";
 

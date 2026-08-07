@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: findr
+resources:
+  - namespace.yaml
+  - postgres-statefulset.yaml
+  - postgres-service.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - ingress.yaml
+secretGenerator:
+  - name: findr-secrets
+    literals:
+      - db-password=CHANGE_ME
+      - firebase-project-id=findr-product-route-optimizer

@@ -1,6 +1,6 @@
 import { AxiosInstance } from "axios";
 
-import { PathfindResult, Product, StoreMap, StoreSummary } from "@/types/domain";
+import { PathfindResult, Product, StoreMap, StoreSummary } from "@findr/types";
 
 function normalizeSortedProduct(product: Product | null): Product | null {
   if (!product) {

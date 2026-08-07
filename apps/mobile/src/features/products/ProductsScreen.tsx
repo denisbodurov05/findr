@@ -8,7 +8,7 @@ import { useProducts } from "@/features/products/useProducts";
 import type { TranslationKey } from "@/i18n/translations";
 import { useCart } from "@/providers/CartProvider";
 import { useTranslation } from "@/providers/I18nProvider";
-import type { Product } from "@/types/domain";
+import type { Product } from "@findr/types";
 import { AppIcon } from "@/ui/AppIcon";
 import { Button } from "@/ui/Button";
 import { ScreenState } from "@/ui/ScreenState";

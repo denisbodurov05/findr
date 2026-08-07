@@ -1,6 +1,6 @@
 import React, { createContext, ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
-import { Product } from "@/types/domain";
+import { Product } from "@findr/types";
 
 interface CartContextValue {
   cart: Product[];

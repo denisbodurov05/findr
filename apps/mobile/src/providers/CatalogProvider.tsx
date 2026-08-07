@@ -13,7 +13,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { getProductsByCategory } from "@/services/productService";
 import { getStores } from "@/services/routingService";
 import { useAuthenticatedApi } from "@/services/useAuthenticatedApi";
-import { ProductsByCategory, StoreSummary } from "@/types/domain";
+import { ProductsByCategory, StoreSummary } from "@findr/types";
 
 interface CatalogContextValue {
   productsByCategory: ProductsByCategory;
