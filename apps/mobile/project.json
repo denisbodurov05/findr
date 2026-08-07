@@ -1,0 +1,66 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "mobile",
+  "projectType": "application",
+  "sourceRoot": "apps/mobile/src",
+  "tags": [
+    "scope:mobile",
+    "type:app",
+    "platform:expo",
+    "sdk:57"
+  ],
+  "targets": {
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "npm start"
+      }
+    },
+    "android": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "npm run android"
+      }
+    },
+    "ios": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "npm run ios"
+      }
+    },
+    "web": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "npm run web"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "npm run lint"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{projectRoot}/coverage"
+      ],
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "npm test"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "npm run typecheck"
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+.DS_Store
+.idea/
+*.iml
+
+# Node / Nx
+node_modules/
+.nx/
+dist/
+coverage/
+
+# Expo / mobile
+apps/mobile/node_modules/
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/expo-env.d.ts
+
+# Spring / API
+apps/api/target/
+apps/api/.m2/
+
+# Local environment
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example

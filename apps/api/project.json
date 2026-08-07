@@ -1,0 +1,41 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "api",
+  "projectType": "application",
+  "sourceRoot": "apps/api/src",
+  "tags": [
+    "scope:api",
+    "type:service",
+    "platform:jvm",
+    "framework:spring-boot"
+  ],
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/api",
+        "command": "sh -c 'set -a; [ -f .env ] && . ./.env; set +a; mvn -Dmaven.repo.local=.m2 spring-boot:run'"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{projectRoot}/target"
+      ],
+      "options": {
+        "cwd": "apps/api",
+        "command": "mvn -Dmaven.repo.local=.m2 -DskipTests package"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{projectRoot}/target/surefire-reports"
+      ],
+      "options": {
+        "cwd": "apps/api",
+        "command": "mvn -Dmaven.repo.local=.m2 test"
+      }
+    }
+  }
+}

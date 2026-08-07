@@ -1,0 +1,21 @@
+{
+  "name": "findr",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@10.9.8",
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "nx": "nx",
+    "graph": "nx graph",
+    "mobile:start": "nx start mobile",
+    "mobile:web": "nx web mobile",
+    "api:serve": "nx serve api",
+    "api:test": "nx test api"
+  },
+  "devDependencies": {
+    "nx": "23.1.0"
+  }
+}
