@@ -83,6 +83,11 @@ export async function authenticate(email: string, password: string): Promise<str
   return user.getIdToken();
 }
 
+export async function getMe(token: string): Promise<{ email: string; role: string }> {
+  const res = await request("/api/v1/auth/me", token);
+  return res.json();
+}
+
 export async function getStores(token: string): Promise<StoreSummary[]> {
   const res = await request("/api/v1/store", token);
   return res.json();
