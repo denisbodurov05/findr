@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import * as SecureStore from "expo-secure-store";
@@ -42,7 +43,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [productsByCategory, setProductsByCategory] = useState<ProductsByCategory>({});
   const [productsLoading, setProductsLoading] = useState(false);
-  const [productsLoaded, setProductsLoaded] = useState(false);
   const [productsError, setProductsError] = useState(false);
   const [stores, setStores] = useState<StoreSummary[]>([]);
   const [storesLoading, setStoresLoading] = useState(false);
@@ -50,19 +50,37 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [storesError, setStoresError] = useState(false);
   const [storeSelectionLoading, setStoreSelectionLoading] = useState(true);
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
+  const productRequestId = useRef(0);
 
   const loadProducts = useCallback(async () => {
+    const requestId = ++productRequestId.current;
+
+    if (!user || selectedStoreId === null) {
+      setProductsByCategory({});
+      setProductsError(false);
+      setProductsLoading(false);
+      return;
+    }
+
     try {
       setProductsLoading(true);
       setProductsError(false);
-      setProductsByCategory(await getProductsByCategory(api));
-      setProductsLoaded(true);
+      setProductsByCategory({});
+      const nextProducts = await getProductsByCategory(api, selectedStoreId);
+      if (productRequestId.current === requestId) {
+        setProductsByCategory(nextProducts);
+      }
     } catch {
-      setProductsError(true);
+      if (productRequestId.current === requestId) {
+        setProductsByCategory({});
+        setProductsError(true);
+      }
     } finally {
-      setProductsLoading(false);
+      if (productRequestId.current === requestId) {
+        setProductsLoading(false);
+      }
     }
-  }, [api]);
+  }, [api, selectedStoreId, user]);
 
   const loadStores = useCallback(async () => {
     try {
@@ -108,16 +126,12 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (!user || productsLoaded || productsLoading || productsError) {
-      return;
-    }
-
     const timeout = setTimeout(() => {
       void loadProducts();
     }, 0);
 
     return () => clearTimeout(timeout);
-  }, [loadProducts, productsError, productsLoaded, productsLoading, user]);
+  }, [loadProducts]);
 
   useEffect(() => {
     if (!user || storesLoaded || storesLoading || storesError) {

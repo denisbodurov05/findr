@@ -33,7 +33,7 @@ function AuthLayout() {
   }
 
   return (
-    <CartProvider>
+    <CartProvider key={selectedStoreId}>
       <Stack screenOptions={{ freezeOnBlur: true }}>
         <Stack.Screen
           name="index"

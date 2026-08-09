@@ -18,4 +18,9 @@ public class ProductController {
         return productService.getAllProductsGroupedByCategories();
     }
 
+    @GetMapping("/grouped-by-categories/store/{storeId}")
+    public Map<String, List<ProductDto>> getProductsGroupedByCategories(@PathVariable Long storeId) {
+        return productService.getProductsGroupedByCategories(storeId);
+    }
+
 }
