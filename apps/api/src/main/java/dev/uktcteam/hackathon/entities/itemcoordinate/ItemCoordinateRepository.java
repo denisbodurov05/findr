@@ -11,4 +11,7 @@ public interface ItemCoordinateRepository extends JpaRepository<ItemCoordinate, 
     List<ItemCoordinate> findByStoreId(Long storeId);
 
     void deleteByStoreId(Long storeId);
+
+    boolean existsByStoreIdAndXAndY(Long storeId, int x, int y);
+
 }

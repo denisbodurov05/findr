@@ -52,11 +52,17 @@ public class RouteOptimizer {
             int shortestDistance = Integer.MAX_VALUE;
 
             for (String product : remainingProducts) {
-                int distance = entranceToProductsDistances.getOrDefault(product, Integer.MAX_VALUE);
-                if (distance < shortestDistance) {
+                int distance = currentLocation.equals(entrance)
+                        ? entranceToProductsDistances.getOrDefault(product, Integer.MAX_VALUE)
+                        : shortestDistances.getOrDefault(new Pair(currentLocation, product), Integer.MAX_VALUE);
+                if (distance >= 0 && distance < shortestDistance) {
                     nearestProduct = product;
                     shortestDistance = distance;
                 }
+            }
+
+            if (nearestProduct == null) {
+                throw new IllegalArgumentException("The requested products are not connected by a walkable route");
             }
 
             route.add(nearestProduct);
@@ -70,10 +76,14 @@ public class RouteOptimizer {
         for (String checkout : checkouts) {
             Pair pair = new Pair(currentLocation, checkout);
             int distance = productToCheckoutDistances.getOrDefault(pair, Integer.MAX_VALUE);
-            if (distance < shortestCheckoutDistance) {
+            if (distance >= 0 && distance < shortestCheckoutDistance) {
                 nearestCheckout = checkout;
                 shortestCheckoutDistance = distance;
             }
+        }
+
+        if (nearestCheckout == null) {
+            throw new IllegalArgumentException("No reachable checkout is available");
         }
 
         route.add(nearestCheckout);
@@ -90,6 +100,9 @@ public class RouteOptimizer {
         int bestPosition = -1;
 
         for (String goldenEgg : goldenEggs) {
+            if (route.contains(goldenEgg)) {
+                continue;
+            }
             for (int i = 1; i < route.size() - 2; i++) {
                 String current = route.get(i);
                 String next = route.get(i + 1);
@@ -98,7 +111,10 @@ public class RouteOptimizer {
                 Pair currentToNext = new Pair(current, next);
 
                 if (!shortestDistances.containsKey(currentToGoldenEgg)
-                        || !shortestDistances.containsKey(goldenEggToNext)) {
+                        || !shortestDistances.containsKey(goldenEggToNext)
+                        || shortestDistances.get(currentToGoldenEgg) < 0
+                        || shortestDistances.get(goldenEggToNext) < 0
+                        || shortestDistances.getOrDefault(currentToNext, -1) < 0) {
                     continue;
                 }
                 int increase = shortestDistances.get(currentToGoldenEgg) + shortestDistances.get(goldenEggToNext)

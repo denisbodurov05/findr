@@ -5,6 +5,7 @@ import dev.uktcteam.hackathon.entities.itemcoordinate.LayoutCellDto;
 import dev.uktcteam.hackathon.pathfinding.PathfindingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,6 +35,7 @@ public class StoreController {
         return ResponseEntity.ok(store);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("{id}/layout")
     public ResponseEntity<Void> replaceLayout(@PathVariable Long id,
                                               @RequestBody List<LayoutCellDto> cells) {
