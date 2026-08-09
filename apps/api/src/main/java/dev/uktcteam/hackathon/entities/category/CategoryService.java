@@ -19,6 +19,11 @@ public class CategoryService {
     }
 
     public Category saveCategory(Category category) {
+        if (category == null || category.getName() == null || category.getName().isBlank()) {
+            throw new IllegalArgumentException("Category name is required");
+        }
+        category.setId(null);
+        category.setName(category.getName().trim());
         return categoryRepository.save(category);
     }
 
