@@ -20,9 +20,9 @@ public class ItemCoordinateDto {
         this.id = itemCoordinate.getId();
         this.x = itemCoordinate.getX();
         this.y = itemCoordinate.getY();
-        this.storeId = itemCoordinate.getStore().getId();
-        this.productId = itemCoordinate.getProduct().getId();
-        this.checkoutId = itemCoordinate.getCheckout().getId();
-        this.trafficFlowId = itemCoordinate.getTrafficFlow().getId();
+        this.storeId = itemCoordinate.getStore() == null ? null : itemCoordinate.getStore().getId();
+        this.productId = itemCoordinate.getProduct() == null ? null : itemCoordinate.getProduct().getId();
+        this.checkoutId = itemCoordinate.getCheckout() == null ? null : itemCoordinate.getCheckout().getId();
+        this.trafficFlowId = itemCoordinate.getTrafficFlow() == null ? null : itemCoordinate.getTrafficFlow().getId();
     }
 }

@@ -40,19 +40,52 @@ public class PathfindingService {
             throw new EntityNotFoundException("Store not found");
         }
 
+        String[] normalizedProducts = products == null ? new String[0] : Arrays.stream(products)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(product -> !product.isEmpty())
+                .distinct()
+                .toArray(String[]::new);
+
+        if (normalizedProducts.length == 0) {
+            return emptyPath();
+        }
+
         StoreRouteData routeData = getRouteData(storeId);
 
-        // Only route through products that actually exist in the store layout.
-        Set<String> placedProducts = routeData.entranceToProductsDistances().keySet();
-        String[] requestedProducts = Arrays.stream(products)
-                .filter(placedProducts::contains)
+        if (coordinateMatrix.findEntrance(routeData.matrix()) == null
+                || coordinateMatrix.findExit(routeData.matrix()) == null) {
+            return emptyPath();
+        }
+
+        Set<String> reachableProducts = routeData.entranceToProductsDistances().entrySet().stream()
+                .filter(entry -> entry.getValue() >= 0)
+                .map(Map.Entry::getKey)
+                .collect(java.util.stream.Collectors.toSet());
+        String[] requestedProducts = Arrays.stream(normalizedProducts)
+                .filter(reachableProducts::contains)
                 .toArray(String[]::new);
+
+        if (requestedProducts.length == 0) {
+            throw new IllegalArgumentException("None of the requested products are present and reachable in this store");
+        }
 
         String entrance = "EN";
 
         String[] goldenEggs = { "P107", "P310", "P204", "P19", "P279" };
 
-        List<String> checkouts = new ArrayList<>(routeData.exitToCheckoutsDistances().keySet());
+        List<String> checkouts = routeData.exitToCheckoutsDistances().entrySet().stream()
+                .filter(entry -> entry.getValue() >= 0)
+                .map(Map.Entry::getKey)
+                .filter(checkout -> Arrays.stream(requestedProducts).anyMatch(product -> {
+                    Integer distance = routeData.productToCheckoutDistances().get(new Pair(product, checkout));
+                    return distance != null && distance >= 0;
+                }))
+                .toList();
+
+        if (checkouts.isEmpty()) {
+            return emptyPath();
+        }
 
         String exit = "EX";
 
@@ -113,17 +146,23 @@ public class PathfindingService {
         }
 
 
-        PathfindDto pathfindDto = PathfindDto.builder()
+        return PathfindDto.builder()
                 .distance(totalDistance)
                 .sorted(sorted)
                 .pathfind(pathfind)
                 .build();
-
-        return pathfindDto;
     }
 
     public void invalidateCache(Long storeId) {
         routeDataCache.remove(storeId);
+    }
+
+    private PathfindDto emptyPath() {
+        return PathfindDto.builder()
+                .distance(0)
+                .sorted(new ProductDto[0])
+                .pathfind(new TwoPointPathDto[0])
+                .build();
     }
 
     private StoreRouteData getRouteData(Long storeId) {

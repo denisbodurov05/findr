@@ -1,6 +1,7 @@
 package dev.uktcteam.hackathon.pathfinding.logic;
 
 import dev.uktcteam.hackathon.entities.itemcoordinate.ItemCoordinate;
+import dev.uktcteam.hackathon.entities.itemcoordinate.StoreLayout;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -9,10 +10,10 @@ import java.util.*;
 public class CoordinateMatrix {
 
     public String[][] buildMatrix(List<ItemCoordinate> coordinates) {
-        String[][] matrix = new String[41][21];
+        String[][] matrix = new String[StoreLayout.COLUMNS][StoreLayout.ROWS];
 
-        for (int i = 0; i < 41; i++) {
-            for (int j = 0; j < 21; j++) {
+        for (int i = 0; i < StoreLayout.COLUMNS; i++) {
+            for (int j = 0; j < StoreLayout.ROWS; j++) {
                 matrix[i][j] = "";
             }
         }
@@ -21,9 +22,7 @@ public class CoordinateMatrix {
             int x = coordinate.getX();
             int y = coordinate.getY();
 
-            if (x < 0 || x >= 41 || y < 0 || y >= 21) {
-                continue;
-            }
+            StoreLayout.validateCoordinates(x, y);
 
             if (coordinate.isProduct()) {
                 matrix[x][y] = "P" + coordinate.getProduct().getId();
@@ -47,8 +46,8 @@ public class CoordinateMatrix {
     public HashMap<String, int[]> findProducts(String[][] matrix) {
         HashMap<String, int[]> products = new HashMap<>();
 
-        for (int i = 0; i < 41; i++) {
-            for (int j = 0; j < 21; j++) {
+        for (int i = 0; i < StoreLayout.COLUMNS; i++) {
+            for (int j = 0; j < StoreLayout.ROWS; j++) {
                 if (matrix[i][j].startsWith("P")) {
                     products.put(matrix[i][j], new int[] { i, j });
                 }
@@ -61,8 +60,8 @@ public class CoordinateMatrix {
     public HashMap<String, int[]> findCheckouts(String[][] matrix) {
         HashMap<String, int[]> checkouts = new HashMap<>();
 
-        for (int i = 0; i < 41; i++) {
-            for (int j = 0; j < 21; j++) {
+        for (int i = 0; i < StoreLayout.COLUMNS; i++) {
+            for (int j = 0; j < StoreLayout.ROWS; j++) {
                 if (matrix[i][j].startsWith("S") || matrix[i][j].startsWith("CA")) {
                     checkouts.put(matrix[i][j], new int[] { i, j });
                 }
@@ -73,8 +72,8 @@ public class CoordinateMatrix {
     }
 
     public int[] findEntrance(String[][] matrix) {
-        for (int i = 0; i < 41; i++) {
-            for (int j = 0; j < 21; j++) {
+        for (int i = 0; i < StoreLayout.COLUMNS; i++) {
+            for (int j = 0; j < StoreLayout.ROWS; j++) {
                 if (matrix[i][j].equals("EN")) {
                     return new int[] { i, j };
                 }
@@ -84,8 +83,8 @@ public class CoordinateMatrix {
     }
 
     public int[] findExit(String[][] matrix) {
-        for (int i = 0; i < 41; i++) {
-            for (int j = 0; j < 21; j++) {
+        for (int i = 0; i < StoreLayout.COLUMNS; i++) {
+            for (int j = 0; j < StoreLayout.ROWS; j++) {
                 if (matrix[i][j].equals("EX")) {
                     return new int[] { i, j };
                 }
@@ -95,65 +94,26 @@ public class CoordinateMatrix {
     }
 
     public int bfs(String[][] matrix, int[] start, int[] end) {
-        int[] dx = { 0, 0, 1, -1, 1, 1, -1, -1 };
-        int[] dy = { 1, -1, 0, 0, 1, -1, 1, -1 };
-        boolean[][] visited = new boolean[41][21];
-        Queue<int[]> queue = new LinkedList<>();
-        queue.add(start);
-        visited[start[0]][start[1]] = true;
-        int distance = 0;
-        boolean fromProduct = matrix[start[0]][start[1]].startsWith("P");
-        boolean checkoutPassed = matrix[start[0]][start[1]].startsWith("S")
-                || matrix[start[0]][start[1]].startsWith("CA");
-        ;
-
-        while (!queue.isEmpty()) {
-            int size = queue.size();
-            for (int i = 0; i < size; i++) {
-                int[] node = queue.poll();
-
-                for (int d = 0; d < 8; d++) {
-                    int nx = node[0] + dx[d];
-                    int ny = node[1] + dy[d];
-
-                    if (nx >= 0 && nx < 41 && ny >= 0 && ny < 21 && !visited[nx][ny] && !matrix[nx][ny].equals("BL")) {
-                        if (fromProduct && matrix[nx][ny].startsWith("P")) {
-                            continue;
-                        }
-                        if (matrix[nx][ny].startsWith("S") || matrix[nx][ny].startsWith("CA")) {
-                            if (checkoutPassed) {
-                                continue;
-                            }
-                        }
-                        if (nx == end[0] && ny == end[1]) {
-                            return distance + 1;
-                        }
-                        if (matrix[nx][ny].startsWith("P")) {
-                            continue;
-                        }
-                        visited[nx][ny] = true;
-                        queue.add(new int[] { nx, ny });
-                        fromProduct = false;
-                    }
-                }
-            }
-            distance++;
-        }
-        return -1;
+        List<int[]> path = bfsWithPath(matrix, start, end);
+        return path == null ? -1 : path.size() - 1;
     }
 
     public List<int[]> bfsWithPath(String[][] matrix, int[] start, int[] end) {
+        if (start == null || end == null) {
+            return null;
+        }
+        if (Arrays.equals(start, end)) {
+            return List.of(start);
+        }
+
         int[] dx = { 0, 0, 1, -1, 1, 1, -1, -1 };
         int[] dy = { 1, -1, 0, 0, 1, -1, 1, -1 };
-        boolean[][] visited = new boolean[41][21];
+        boolean[][] visited = new boolean[StoreLayout.COLUMNS][StoreLayout.ROWS];
         Queue<int[]> queue = new LinkedList<>();
         Map<int[], int[]> parent = new HashMap<>();
         queue.add(start);
         visited[start[0]][start[1]] = true;
         parent.put(start, null);
-        boolean fromProduct = matrix[start[0]][start[1]].startsWith("P");
-        boolean checkoutPassed = matrix[start[0]][start[1]].startsWith("S")
-                || matrix[start[0]][start[1]].startsWith("CA");
 
         while (!queue.isEmpty()) {
             int[] node = queue.poll();
@@ -162,29 +122,25 @@ public class CoordinateMatrix {
                 int nx = node[0] + dx[d];
                 int ny = node[1] + dy[d];
 
-                if (nx >= 0 && nx < 41 && ny >= 0 && ny < 21 && !visited[nx][ny] && !matrix[nx][ny].equals("BL")) {
-                    if (fromProduct && matrix[nx][ny].startsWith("P")) {
-                        continue;
-                    }
-                    if (matrix[nx][ny].startsWith("S") || matrix[nx][ny].startsWith("CA")) {
-                        if (checkoutPassed) {
-                            continue;
-                        }
-                    }
-                    if (nx == end[0] && ny == end[1]) {
-                        parent.put(end, node);
-                        return reconstructPath(parent, start, end);
-                    }
-                    if (matrix[nx][ny].startsWith("P")) {
-                        continue;
-                    }
-                    visited[nx][ny] = true;
-                    int[] current = new int[] { nx, ny };
-                    queue.add(current);
-                    parent.put(current, node);
+                if (nx < 0 || nx >= StoreLayout.COLUMNS || ny < 0 || ny >= StoreLayout.ROWS || visited[nx][ny]) {
+                    continue;
                 }
+
+                boolean isEnd = nx == end[0] && ny == end[1];
+                String value = matrix[nx][ny];
+                boolean occupiedStop = value.startsWith("P") || value.startsWith("S") || value.startsWith("CA");
+                if (value.equals("BL") || (occupiedStop && !isEnd)) {
+                    continue;
+                }
+
+                int[] current = isEnd ? end : new int[] { nx, ny };
+                visited[nx][ny] = true;
+                parent.put(current, node);
+                if (isEnd) {
+                    return reconstructPath(parent, start, end);
+                }
+                queue.add(current);
             }
-            fromProduct = false;
         }
         return null;
     }
@@ -246,6 +202,10 @@ public class CoordinateMatrix {
         HashMap<String, int[]> products = findProducts(matrix);
         HashMap<String, Integer> distances = new HashMap<>();
 
+        if (entrance == null) {
+            return distances;
+        }
+
         for (String product : products.keySet()) {
             int[] start = entrance;
             int[] end = products.get(product);
@@ -264,6 +224,10 @@ public class CoordinateMatrix {
         int[] exit = findExit(matrix);
         HashMap<String, int[]> checkouts = findCheckouts(matrix);
         HashMap<String, Integer> distances = new HashMap<>();
+
+        if (exit == null) {
+            return distances;
+        }
 
         for (String checkout : checkouts.keySet()) {
             int[] start = exit;

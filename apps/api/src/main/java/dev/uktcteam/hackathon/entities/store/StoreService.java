@@ -2,6 +2,7 @@ package dev.uktcteam.hackathon.entities.store;
 
 import dev.uktcteam.hackathon.entities.itemcoordinate.ItemCoordinate;
 import dev.uktcteam.hackathon.entities.itemcoordinate.ItemCoordinateDetailsDto;
+import dev.uktcteam.hackathon.entities.itemcoordinate.StoreLayout;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -34,15 +35,10 @@ public class StoreService {
         storeDto.setAddress(store.getAddress());
         storeDto.setAddressKey(getAddressKey(store));
 
-        int maxX = 0;
-        int maxY = 0;
+        ItemCoordinateDetailsDto[][] itemDetails =
+                new ItemCoordinateDetailsDto[StoreLayout.COLUMNS][StoreLayout.ROWS];
         for (ItemCoordinate item : store.getItemCoordinates()) {
-            maxX = Math.max(maxX, item.getX());
-            maxY = Math.max(maxY, item.getY());
-        }
-
-        ItemCoordinateDetailsDto[][] itemDetails = new ItemCoordinateDetailsDto[maxX+1][maxY+1];
-        for (ItemCoordinate item : store.getItemCoordinates()) {
+            StoreLayout.validateCoordinates(item.getX(), item.getY());
             ItemCoordinateDetailsDto itemCoordinateDetailsDto = new ItemCoordinateDetailsDto();
 
             if (item.isProduct()) {
