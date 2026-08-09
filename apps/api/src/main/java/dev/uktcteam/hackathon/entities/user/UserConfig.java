@@ -1,8 +1,6 @@
 package dev.uktcteam.hackathon.entities.user;
 
 import dev.uktcteam.hackathon.enums.Role;
-import dev.uktcteam.hackathon.security.auth.AuthenticationService;
-import dev.uktcteam.hackathon.security.auth.requests.RegisterRequest;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,45 +9,36 @@ import org.springframework.context.annotation.Configuration;
 public class UserConfig {
 
     @Bean
-    public CommandLineRunner commandLineRunner(
-            AuthenticationService authenticationService,
-            UserRepository userRepository
-    ){
+    public CommandLineRunner commandLineRunner(UserRepository userRepository) {
         return args -> {
-
             seedUserIfMissing(
                     userRepository,
-                    authenticationService,
-                    RegisterRequest.builder()
-                            .username("Admin")
-                            .email("admin@uktc.bg")
-                            .password("Admin1234")
-                            .build(),
+                    "Admin",
+                    "admin@uktc.bg",
                     Role.ADMIN
             );
 
             seedUserIfMissing(
                     userRepository,
-                    authenticationService,
-                    RegisterRequest.builder()
-                            .username("Tomov")
-                            .email("tomov@abv.bg")
-                            .password("Tomov1234")
-                            .build(),
+                    "Tomov",
+                    "tomov@abv.bg",
                     Role.USER
             );
-
         };
     }
 
     private void seedUserIfMissing(
             UserRepository userRepository,
-            AuthenticationService authenticationService,
-            RegisterRequest request,
+            String name,
+            String email,
             Role role
     ) {
-        if (userRepository.findByEmailEqualsIgnoreCase(request.getEmail()).isEmpty()) {
-            authenticationService.registerWithRole(request, role);
+        if (userRepository.findByEmailEqualsIgnoreCase(email).isEmpty()) {
+            userRepository.save(User.builder()
+                    .name(name)
+                    .email(email)
+                    .role(role)
+                    .build());
         }
     }
 }

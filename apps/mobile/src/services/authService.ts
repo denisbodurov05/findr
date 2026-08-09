@@ -1,7 +1,5 @@
 import {
   createUserWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithCredential,
   signInWithEmailAndPassword,
   signOut as signOutFromFirebase,
   updateProfile,
@@ -39,12 +37,6 @@ export async function register(username: string, email: string, password: string
 
 export async function authenticate(email: string, password: string) {
   const { user } = await signInWithEmailAndPassword(firebaseAuth, email, password);
-  return toSession(user);
-}
-
-export async function authenticateWithGoogleIdToken(idToken: string) {
-  const credential = GoogleAuthProvider.credential(idToken);
-  const { user } = await signInWithCredential(firebaseAuth, credential);
   return toSession(user);
 }
 

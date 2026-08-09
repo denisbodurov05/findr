@@ -8,8 +8,3 @@ resources:
   - api-deployment.yaml
   - api-service.yaml
   - ingress.yaml
-secretGenerator:
-  - name: findr-secrets
-    literals:
-      - db-password=CHANGE_ME
-      - firebase-project-id=findr-product-route-optimizer

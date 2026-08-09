@@ -13,7 +13,6 @@ import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "@/config/firebase";
 import {
   authenticate,
-  authenticateWithGoogleIdToken,
   mapFirebaseUser,
   register,
   signOut as signOutFromFirebase,
@@ -58,7 +57,6 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (username: string, email: string, password: string) => Promise<AuthResult>;
   signIn: (email: string, password: string) => Promise<AuthResult>;
-  signInWithGoogle: (idToken: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
 }
@@ -129,18 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession, t]
   );
 
-  const signInWithGoogle = useCallback(
-    async (idToken: string) => {
-      try {
-        const session = await authenticateWithGoogleIdToken(idToken);
-        applySession(session);
-      } catch (error) {
-        return { error: getErrorMessage(error, t("common.unknownError")) };
-      }
-    },
-    [applySession, t]
-  );
-
   const signOut = useCallback(async () => {
     setUser(null);
     setAccessToken(null);
@@ -167,11 +153,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       signUp,
       signIn,
-      signInWithGoogle,
       signOut,
       getAccessToken,
     }),
-    [accessToken, getAccessToken, loading, signIn, signInWithGoogle, signOut, signUp, user]
+    [accessToken, getAccessToken, loading, signIn, signOut, signUp, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
