@@ -2,11 +2,13 @@ package dev.uktcteam.hackathon.entities.store;
 
 import dev.uktcteam.hackathon.entities.itemcoordinate.ItemCoordinate;
 import dev.uktcteam.hackathon.entities.itemcoordinate.ItemCoordinateDetailsDto;
+import dev.uktcteam.hackathon.entities.itemcoordinate.ItemCoordinateRepository;
 import dev.uktcteam.hackathon.entities.itemcoordinate.StoreLayout;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,6 +17,7 @@ import java.util.List;
 public class StoreService {
 
     private final StoreRepository storeRepository;
+    private final ItemCoordinateRepository itemCoordinateRepository;
 
     public List<StoreSummaryDto> getStores() {
         return storeRepository.findAll(Sort.by("id")).stream()
@@ -29,11 +32,7 @@ public class StoreService {
         StoreDto storeDto = new StoreDto();
         storeDto.setId(store.getId());
         storeDto.setName(store.getName());
-        storeDto.setNameKey(getNameKey(store));
         storeDto.setDescription(store.getDescription());
-        storeDto.setDescriptionKey(getDescriptionKey(store));
-        storeDto.setAddress(store.getAddress());
-        storeDto.setAddressKey(getAddressKey(store));
 
         ItemCoordinateDetailsDto[][] itemDetails =
                 new ItemCoordinateDetailsDto[StoreLayout.COLUMNS][StoreLayout.ROWS];
@@ -74,23 +73,36 @@ public class StoreService {
         StoreSummaryDto dto = new StoreSummaryDto();
         dto.setId(store.getId());
         dto.setName(store.getName());
-        dto.setNameKey(getNameKey(store));
         dto.setDescription(store.getDescription());
-        dto.setDescriptionKey(getDescriptionKey(store));
-        dto.setAddress(store.getAddress());
-        dto.setAddressKey(getAddressKey(store));
         return dto;
     }
 
-    private String getNameKey(Store store) {
-        return "stores." + store.getName() + ".name";
+    public Store createStore(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Store name is required");
+        }
+        String normalizedName = name.trim();
+        if (normalizedName.length() > 255) {
+            throw new IllegalArgumentException("Store name must be 255 characters or fewer");
+        }
+
+        Store store = new Store();
+        store.setName(normalizedName);
+        store.setDescription("");
+        return storeRepository.save(store);
     }
 
-    private String getDescriptionKey(Store store) {
-        return "stores." + store.getName() + ".description";
+    @Transactional
+    public void deleteStore(Long storeId) {
+        if (!storeRepository.existsById(storeId)) {
+            throw new EntityNotFoundException("Store not found");
+        }
+        itemCoordinateRepository.deleteByStoreId(storeId);
+        storeRepository.deleteById(storeId);
     }
 
-    private String getAddressKey(Store store) {
-        return "stores." + store.getName() + ".address";
+    public StoreSummaryDto toStoreSummary(Store store) {
+        return toStoreSummaryDto(store);
     }
+
 }

@@ -96,13 +96,6 @@ export const translations = {
     "storeSelect.subtitle": "Ще използваме избрания магазин за продуктите, картата и маршрута.",
     "storeSelect.retry": "ОПИТАЙ ПАК",
 
-    "stores.default_store.name": "Findr Основен",
-    "stores.default_store.description": "Основният демо магазин.",
-    "stores.default_store.address": "София, бул. Демо 1",
-    "stores.express_store.name": "Findr Express",
-    "stores.express_store.description": "По-малък демо магазин за бързо пазаруване.",
-    "stores.express_store.address": "София, ул. Хакатон 57",
-
     "notFound.title": "Този екран не съществува.",
     "notFound.home": "Към началото",
   },
@@ -191,13 +184,6 @@ export const translations = {
     "storeSelect.title": "Choose a store",
     "storeSelect.subtitle": "We will use your selected store for products, maps, and route planning.",
     "storeSelect.retry": "TRY AGAIN",
-
-    "stores.default_store.name": "Findr Main",
-    "stores.default_store.description": "The main demo store.",
-    "stores.default_store.address": "Sofia, Demo Blvd 1",
-    "stores.express_store.name": "Findr Express",
-    "stores.express_store.description": "A smaller demo store for quick shopping.",
-    "stores.express_store.address": "Sofia, Hackathon St 57",
 
     "notFound.title": "This screen does not exist.",
     "notFound.home": "Go home",

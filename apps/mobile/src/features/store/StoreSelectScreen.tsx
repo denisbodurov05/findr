@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, fonts, radius, shadows, spacing } from "@/config/theme";
-import type { TranslationKey } from "@/i18n/translations";
+import { getStoreLabel } from "@/features/store/storeLabel";
 import { useAuth } from "@/providers/AuthProvider";
 import { useCatalog } from "@/providers/CatalogProvider";
 import { useTranslation } from "@/providers/I18nProvider";
@@ -82,10 +82,7 @@ function StoreOption({
   onPress: (storeId: number) => void;
   store: StoreSummary;
 }) {
-  const { t } = useTranslation();
-  const name = translateStoreText(store.nameKey, store.name, t);
-  const description = translateStoreText(store.descriptionKey, store.description, t);
-  const address = translateStoreText(store.addressKey, store.address, t);
+  const name = getStoreLabel(store);
 
   return (
     <Pressable
@@ -97,20 +94,11 @@ function StoreOption({
       </View>
       <View style={styles.storeText}>
         <Text style={styles.storeName}>{name}</Text>
-        <Text style={styles.storeDescription}>{description}</Text>
-        <Text style={styles.storeAddress}>{address}</Text>
+        {store.description ? <Text style={styles.storeDescription}>{store.description}</Text> : null}
       </View>
       <AppIcon library="Feather" name="arrow-right" size={22} color={colors.primary} />
     </Pressable>
   );
-}
-
-function translateStoreText(
-  key: string | undefined,
-  fallback: string,
-  t: (key: TranslationKey) => string
-) {
-  return key ? t(key as TranslationKey) : fallback;
 }
 
 const styles = StyleSheet.create({
@@ -181,11 +169,6 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     fontFamily: fonts.regular,
     fontSize: 14,
-  },
-  storeAddress: {
-    color: colors.primary,
-    fontFamily: fonts.semiBold,
-    fontSize: 13,
   },
   errorBlock: {
     gap: spacing.md,

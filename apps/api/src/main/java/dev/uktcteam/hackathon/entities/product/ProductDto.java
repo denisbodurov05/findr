@@ -9,7 +9,6 @@ public class ProductDto {
     private String name;
     private String nameKey;
     private String image;
-    private Long coordinateId;
     private Long categoryId;
     private String categoryKey;
     @JsonProperty("isGolden")
@@ -20,9 +19,6 @@ public class ProductDto {
         this.name = product.getName();
         this.nameKey = "products." + product.getName();
         this.image = product.getImage();
-        this.coordinateId = product.getItemCoordinates().isEmpty()
-                ? null
-                : product.getItemCoordinates().get(0).getId();
         this.categoryId = product.getCategory().getId();
         this.categoryKey = "categories." + product.getCategory().getName();
         this.isGolden = product.getIsGolden();
