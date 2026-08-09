@@ -10,8 +10,10 @@ function normalizeProduct(product: ProductDto): Product {
   };
 }
 
-export async function getProductsByCategory(api: AxiosInstance) {
-  const { data } = await api.get<ProductsByCategoryDto>("/products/grouped-by-categories");
+export async function getProductsByCategory(api: AxiosInstance, storeId: number) {
+  const { data } = await api.get<ProductsByCategoryDto>(
+    `/products/grouped-by-categories/store/${storeId}`
+  );
   const groupedProducts: ProductsByCategory = {};
 
   for (const [category, products] of Object.entries(data)) {
