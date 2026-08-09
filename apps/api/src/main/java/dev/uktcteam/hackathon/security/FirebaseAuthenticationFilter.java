@@ -43,9 +43,7 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return (request.getRequestURI().startsWith("/api/v1/auth/")
-                && !request.getRequestURI().equals("/api/v1/auth/me"))
-                || "OPTIONS".equalsIgnoreCase(request.getMethod());
+        return "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
     @Override
@@ -55,7 +53,6 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            // Already authenticated (e.g. by JwtAuthenticationFilter with an app JWT).
             filterChain.doFilter(request, response);
             return;
         }
@@ -71,7 +68,7 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
             Jwt jwt = getJwtDecoder().decode(authHeader.substring(BEARER_PREFIX.length()));
             User user = syncUser(jwt);
             UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(user, jwt, user.getAuthorities());
+                    new UsernamePasswordAuthenticationToken(user.getEmail(), jwt, user.getRole().getAuthorities());
 
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -118,13 +115,19 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
                 .filter(StringUtils::hasText)
                 .orElseGet(() -> email.substring(0, email.indexOf("@")));
 
-        User user = userRepository.findByFirebaseUid(firebaseUid)
-                .or(() -> userRepository.findByEmailEqualsIgnoreCase(email))
-                .orElseGet(() -> User.builder()
-                        .email(email)
-                        .password("FIREBASE_AUTH")
-                        .role(Role.USER)
-                        .build());
+        User user = userRepository.findByFirebaseUid(firebaseUid).orElseGet(() -> {
+            Optional<User> existingEmailUser = userRepository.findByEmailEqualsIgnoreCase(email);
+            boolean emailVerified = Boolean.TRUE.equals(jwt.getClaim("email_verified"));
+
+            if (existingEmailUser.isPresent() && !emailVerified) {
+                throw new JwtException("A verified email is required to link this account");
+            }
+
+            return existingEmailUser.orElseGet(() -> User.builder()
+                    .email(email)
+                    .role(Role.USER)
+                    .build());
+        });
 
         user.setFirebaseUid(firebaseUid);
         user.setEmail(email);
@@ -132,10 +135,6 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
 
         if (user.getRole() == null) {
             user.setRole(Role.USER);
-        }
-
-        if (!StringUtils.hasText(user.getPassword())) {
-            user.setPassword("FIREBASE_AUTH");
         }
 
         return userRepository.save(user);

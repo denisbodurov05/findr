@@ -1,34 +1,14 @@
 package dev.uktcteam.hackathon.exceptions;
 
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class CustomExceptionHandler {
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ProblemDetail handleBadCredentials(BadCredentialsException exception) {
-        ProblemDetail problemDetail = ProblemDetail
-                .forStatusAndDetail(HttpStatusCode.valueOf(401), "Invalid credentials");
-        problemDetail.setProperty("error", "invalid_credentials");
-        return problemDetail;
-    }
-
-    @ExceptionHandler({ExpiredJwtException.class, JwtException.class})
-    public ProblemDetail handleJwtException(RuntimeException exception) {
-        ProblemDetail problemDetail = ProblemDetail
-                .forStatusAndDetail(HttpStatusCode.valueOf(401), "Invalid or expired token");
-        problemDetail.setProperty("error", "invalid_token");
-        return problemDetail;
-    }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException exception) {
@@ -46,8 +26,8 @@ public class CustomExceptionHandler {
         return problemDetail;
     }
 
-    @ExceptionHandler({EntityNotFoundException.class, UsernameNotFoundException.class})
-    public ProblemDetail handleNotFound(RuntimeException exception) {
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ProblemDetail handleNotFound(EntityNotFoundException exception) {
         ProblemDetail problemDetail = ProblemDetail
                 .forStatusAndDetail(HttpStatusCode.valueOf(404), exception.getMessage());
         problemDetail.setProperty("error", "not_found");

@@ -33,9 +33,3 @@ application:
   security:
     firebase:
       project-id: ${FIREBASE_PROJECT_ID:}
-    jwt:
-      secret-key: ${JWT_SECRET_KEY:316c0a2a82b1cda7e48bfd32737b7d38043c574be0cbf92180f7a57fb35e5b40}
-      expiration: ${JWT_EXPIRATION_MS:900000}
-    refresh-token:
-      secret-key: ${REFRESH_TOKEN_SECRET_KEY:3FDC8124AE03656BFEFABC3C925B18372147D12FA177885827D00A16A73A9014}
-      expiration: ${REFRESH_TOKEN_EXPIRATION_MS:864000000}

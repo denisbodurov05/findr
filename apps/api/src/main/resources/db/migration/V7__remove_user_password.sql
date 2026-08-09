@@ -1,0 +1,1 @@
+ALTER TABLE user_ DROP COLUMN IF EXISTS password;
