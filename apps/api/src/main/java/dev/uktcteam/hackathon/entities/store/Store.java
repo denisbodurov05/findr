@@ -48,12 +48,6 @@ public class Store {
     )
     private String description;
 
-    @Column(
-            name = "address",
-            nullable = false
-    )
-    private String address;
-
     @Builder.Default
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemCoordinate> itemCoordinates = new ArrayList<>();

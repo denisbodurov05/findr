@@ -2,7 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, fonts, radius, shadows, spacing } from "@/config/theme";
-import type { TranslationKey } from "@/i18n/translations";
+import { getStoreLabel } from "@/features/store/storeLabel";
 import { useAuth } from "@/providers/AuthProvider";
 import { useCatalog } from "@/providers/CatalogProvider";
 import { useTranslation } from "@/providers/I18nProvider";
@@ -70,8 +70,7 @@ export function SettingsScreen() {
             {!storesLoading && !storesError
               ? stores.map((store) => {
                   const selected = store.id === selectedStoreId;
-                  const name = translateStoreText(store.nameKey, store.name, t);
-                  const address = translateStoreText(store.addressKey, store.address, t);
+                  const name = getStoreLabel(store);
 
                   return (
                     <Pressable
@@ -90,9 +89,6 @@ export function SettingsScreen() {
                       <View style={styles.storeText}>
                         <Text style={[styles.storeName, selected && styles.storeNameSelected]}>
                           {name}
-                        </Text>
-                        <Text style={[styles.storeAddress, selected && styles.storeAddressSelected]}>
-                          {address}
                         </Text>
                       </View>
                       {selected ? (
@@ -117,14 +113,6 @@ export function SettingsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function translateStoreText(
-  key: string | undefined,
-  fallback: string,
-  t: (key: TranslationKey) => string
-) {
-  return key ? t(key as TranslationKey) : fallback;
 }
 
 const styles = StyleSheet.create({
@@ -248,14 +236,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   storeNameSelected: {
-    color: colors.surface,
-  },
-  storeAddress: {
-    color: colors.mutedText,
-    fontFamily: fonts.regular,
-    fontSize: 13,
-  },
-  storeAddressSelected: {
     color: colors.surface,
   },
   storeNoticeText: {

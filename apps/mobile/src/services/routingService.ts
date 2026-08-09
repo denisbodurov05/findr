@@ -1,8 +1,8 @@
 import { AxiosInstance } from "axios";
 
-import { PathfindResult, Product, StoreMap, StoreSummary } from "@findr/types";
+import { PathfindDto, PathfindResult, Product, ProductDto, StoreMap, StoreSummary } from "@findr/types";
 
-function normalizeSortedProduct(product: Product | null): Product | null {
+function normalizeSortedProduct(product: ProductDto | null): Product | null {
   if (!product) {
     return null;
   }
@@ -10,7 +10,7 @@ function normalizeSortedProduct(product: Product | null): Product | null {
   return {
     ...product,
     productId: String(product.productId),
-    imageUri: product.image || product.imageUri || undefined,
+    imageUri: product.image || undefined,
   };
 }
 
@@ -26,7 +26,7 @@ export async function getStores(api: AxiosInstance) {
 
 export async function getPath(api: AxiosInstance, productIds: string[], storeId = 1) {
   const products = productIds.map((productId) => `P${productId}`);
-  const { data } = await api.get<PathfindResult>(`/pathfind/${storeId}`, {
+  const { data } = await api.get<PathfindDto>(`/pathfind/${storeId}`, {
     params: {
       products: products.join(","),
     },
@@ -35,5 +35,5 @@ export async function getPath(api: AxiosInstance, productIds: string[], storeId 
   return {
     ...data,
     sorted: data.sorted.map(normalizeSortedProduct),
-  };
+  } satisfies PathfindResult;
 }

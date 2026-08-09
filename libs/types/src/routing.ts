@@ -1,4 +1,4 @@
-import type { Product } from "./products";
+import type { Product, ProductDto } from "./products";
 
 export interface Point {
   x: number;
@@ -18,5 +18,11 @@ export interface RouteSegment {
 export interface PathfindResult {
   distance: number;
   sorted: (Product | null)[];
+  pathfind: RouteSegment[];
+}
+
+export interface PathfindDto {
+  distance: number;
+  sorted: (ProductDto | null)[];
   pathfind: RouteSegment[];
 }

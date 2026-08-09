@@ -11,4 +11,14 @@ export interface Product {
   golden?: boolean;
 }
 
+export interface ProductDto {
+  productId: number;
+  name: string;
+  nameKey: string;
+  image?: string | null;
+  categoryKey: string;
+  isGolden: boolean;
+}
+
 export type ProductsByCategory = Record<string, Product[]>;
+export type ProductsByCategoryDto = Record<string, ProductDto[]>;

@@ -1,0 +1,1 @@
+ALTER TABLE store DROP COLUMN IF EXISTS address;
