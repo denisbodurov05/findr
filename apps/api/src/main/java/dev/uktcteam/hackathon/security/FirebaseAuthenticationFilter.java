@@ -43,7 +43,8 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getRequestURI().startsWith("/api/v1/auth/")
+        return (request.getRequestURI().startsWith("/api/v1/auth/")
+                && !request.getRequestURI().equals("/api/v1/auth/me"))
                 || "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 

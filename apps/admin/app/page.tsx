@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 import { firebaseApp } from "@/lib/firebase";
 
@@ -11,6 +12,7 @@ import {
   categoryColor,
   cellColor,
   getProducts,
+  getMe,
   getStore,
   getStores,
   GRID_COLS,
@@ -41,6 +43,7 @@ interface Status {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -74,8 +77,18 @@ export default function AdminPage() {
       return;
     }
 
-    void Promise.all([getStores(token), getProducts(token)])
-      .then(([storeList, productMap]) => {
+    void getMe(token)
+      .then((me) => {
+        if (me.role !== "ADMIN") {
+          router.replace("/403");
+          return null;
+        }
+
+        return Promise.all([getStores(token), getProducts(token)]);
+      })
+      .then((result) => {
+        if (!result) return;
+        const [storeList, productMap] = result;
         setStores(storeList);
         setProducts(productMap);
         if (storeList.length > 0) {
@@ -86,7 +99,7 @@ export default function AdminPage() {
         setStatus({ type: "error", text: error instanceof ApiError ? error.message : "Failed to load data" });
         void signOut(getAuth(firebaseApp));
       });
-  }, [token]);
+  }, [router, token]);
 
   useEffect(() => {
     if (!token || storeId === null) {
