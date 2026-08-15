@@ -1,8 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: findr
 resources:
-  - namespace.yaml
-  - postgres
-  - api
-  - admin
+  - statefulset.yaml
+  - service.yaml

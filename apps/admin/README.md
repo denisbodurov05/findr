@@ -28,3 +28,17 @@ npm run lint --workspace=admin
 npm run test --workspace=admin
 npm run build --workspace=admin
 ```
+
+## Container deployment
+
+The production image is built from the repository root because the admin uses
+the `@findr/types` workspace package:
+
+```bash
+docker build -f apps/admin/Dockerfile -t findr-admin .
+```
+
+`NEXT_PUBLIC_FIREBASE_*` values are embedded during `next build` and therefore
+must be supplied as Docker build arguments. `BACKEND_URL` remains server-only
+and is supplied to the running container; k3s sets it to the internal
+`http://findr-api` Service.

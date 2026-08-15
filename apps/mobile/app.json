@@ -8,9 +8,11 @@
     "scheme": "findr",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.denisbodurov.findr"
     },
     "android": {
+      "package": "com.denisbodurov.findr",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/adaptive-icon.png"
