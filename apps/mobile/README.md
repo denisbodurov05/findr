@@ -54,3 +54,20 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Releases
+
+Native builds use EAS. Configure the project ID through `EAS_PROJECT_ID` and
+store the `EXPO_PUBLIC_*` application configuration in the EAS `production`
+environment.
+
+The GitHub deployment workflow creates an installable Android APK and attaches
+it to a GitHub Release when either:
+
+- a `mobile-vMAJOR.MINOR.PATCH` tag is pushed from a commit on `main`; or
+- the Deploy workflow is run manually with component `mobile` and a version.
+
+GitHub Releases are intended for direct Android installation and testing. App
+Store and Play Store delivery should use the `production` EAS profile with EAS
+Submit. JavaScript-only over-the-air delivery can be added separately with EAS
+Update once `expo-updates` and a runtime-version policy are configured.

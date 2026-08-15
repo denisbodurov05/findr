@@ -13,10 +13,12 @@ spec:
       labels:
         app: findr-api
     spec:
+      imagePullSecrets:
+        - name: ghcr-pull
       containers:
         - name: api
           image: ghcr.io/denisbodurov05/findr-api:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:
@@ -42,6 +44,12 @@ spec:
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 20
           resources:
             requests:
               cpu: 250m

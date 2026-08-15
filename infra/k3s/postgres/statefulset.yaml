@@ -29,6 +29,22 @@ spec:
               value: findr
           ports:
             - containerPort: 5432
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 10
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

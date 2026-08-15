@@ -5,23 +5,92 @@ on:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component to deploy from main
+        required: true
+        type: choice
+        options:
+          - api
+          - admin
+          - api-and-admin
+          - mobile
+      mobile_version:
+        description: Mobile version without the mobile-v prefix (for example 1.1.0)
+        required: false
+        type: string
+  push:
+    tags:
+      - "mobile-v*"
 
 permissions:
   contents: read
-  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/${{ github.repository_owner }}/findr-api
+  ADMIN_IMAGE: ghcr.io/${{ github.repository_owner }}/findr-admin
 
 jobs:
-  publish-api-image:
-    if: github.event.workflow_run.conclusion == 'success'
+  changes:
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.components.outputs.api }}
+      admin: ${{ steps.components.outputs.admin }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+      - id: components
+        name: Detect deployable components
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          api=false
+          admin=false
+
+          while IFS= read -r file; do
+            case "$file" in
+              apps/api/*|infra/k3s/api/*|infra/k3s/postgres/*|infra/k3s/namespace.yaml|infra/k3s/kustomization.yaml|.github/workflows/deploy.yml)
+                api=true
+                ;;
+            esac
+            case "$file" in
+              apps/admin/*|libs/types/*|package.json|package-lock.json|infra/k3s/admin/*|infra/k3s/namespace.yaml|infra/k3s/kustomization.yaml|.github/workflows/deploy.yml)
+                admin=true
+                ;;
+            esac
+          done < <(git diff --name-only "${DEPLOY_SHA}^1" "$DEPLOY_SHA")
+
+          echo "api=$api" >> "$GITHUB_OUTPUT"
+          echo "admin=$admin" >> "$GITHUB_OUTPUT"
+
+  publish-api-image:
+    needs: changes
+    if: >-
+      ${{
+        always() &&
+        (
+          (github.event_name == 'workflow_run' && needs.changes.outputs.api == 'true') ||
+          (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.component == 'api' || inputs.component == 'api-and-admin'))
+        )
+      }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
@@ -30,5 +99,256 @@ jobs:
           file: apps/api/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/findr-api:latest
-            ghcr.io/${{ github.repository_owner }}/findr-api:${{ github.event.workflow_run.head_sha }}
+            ${{ env.API_IMAGE }}:latest
+            ${{ env.API_IMAGE }}:${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+  deploy-api:
+    needs: publish-api-image
+    if: ${{ always() && needs.publish-api-image.result == 'success' }}
+    runs-on: [self-hosted, linux, k3s]
+    environment: production
+    concurrency:
+      group: deploy-api-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+      GHCR_USERNAME: ${{ vars.GHCR_USERNAME || github.repository_owner }}
+      API_HOST: ${{ vars.API_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - name: Validate deployment configuration
+        run: |
+          set -euo pipefail
+          for name in DB_PASSWORD FIREBASE_PROJECT_ID GHCR_PULL_TOKEN GHCR_USERNAME API_HOST; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing production configuration: $name" >&2
+              exit 1
+            fi
+          done
+          if [[ ! "$API_HOST" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "API_HOST is not a valid hostname" >&2
+            exit 1
+          fi
+      - name: Configure namespace and pull credentials
+        run: |
+          set -euo pipefail
+          kubectl apply -f infra/k3s/namespace.yaml
+          kubectl -n findr create secret generic findr-secrets \
+            --from-literal=db-password="$DB_PASSWORD" \
+            --from-literal=firebase-project-id="$FIREBASE_PROJECT_ID" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n findr create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="$GHCR_USERNAME" \
+            --docker-password="$GHCR_PULL_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+      - name: Deploy PostgreSQL
+        run: |
+          set -euo pipefail
+          kubectl apply -f infra/k3s/postgres/service.yaml
+          kubectl apply -f infra/k3s/postgres/statefulset.yaml
+          kubectl -n findr rollout status statefulset/findr-postgres --timeout=5m
+      - name: Deploy API
+        env:
+          IMAGE: ${{ env.API_IMAGE }}:${{ env.DEPLOY_SHA }}
+        run: |
+          set -euo pipefail
+          kubectl apply -f infra/k3s/api/service.yaml
+          kubectl apply -f infra/k3s/api/deployment.yaml
+          sed "s|api.findr.example.com|$API_HOST|g" infra/k3s/api/ingress.yaml | kubectl apply -f -
+          kubectl -n findr set image deployment/findr-api api="$IMAGE"
+          kubectl -n findr rollout status deployment/findr-api --timeout=5m
+
+  publish-admin-image:
+    needs: changes
+    if: >-
+      ${{
+        always() &&
+        (
+          (github.event_name == 'workflow_run' && needs.changes.outputs.admin == 'true') ||
+          (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.component == 'admin' || inputs.component == 'api-and-admin'))
+        )
+      }}
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    env:
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ vars.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+      NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      - name: Validate public Firebase configuration
+        run: |
+          set -euo pipefail
+          for name in NEXT_PUBLIC_FIREBASE_API_KEY NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN NEXT_PUBLIC_FIREBASE_PROJECT_ID NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID NEXT_PUBLIC_FIREBASE_APP_ID; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing production variable: $name" >&2
+              exit 1
+            fi
+          done
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/admin/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_FIREBASE_API_KEY=${{ env.NEXT_PUBLIC_FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ env.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+            NEXT_PUBLIC_FIREBASE_APP_ID=${{ env.NEXT_PUBLIC_FIREBASE_APP_ID }}
+            DEPLOYMENT_VERSION=${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          tags: |
+            ${{ env.ADMIN_IMAGE }}:latest
+            ${{ env.ADMIN_IMAGE }}:${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+  deploy-admin:
+    needs: publish-admin-image
+    if: ${{ always() && needs.publish-admin-image.result == 'success' }}
+    runs-on: [self-hosted, linux, k3s]
+    environment: production
+    concurrency:
+      group: deploy-admin-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+      GHCR_USERNAME: ${{ vars.GHCR_USERNAME || github.repository_owner }}
+      ADMIN_HOST: ${{ vars.ADMIN_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - name: Validate deployment configuration
+        run: |
+          set -euo pipefail
+          for name in GHCR_PULL_TOKEN GHCR_USERNAME ADMIN_HOST; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing production configuration: $name" >&2
+              exit 1
+            fi
+          done
+          if [[ ! "$ADMIN_HOST" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "ADMIN_HOST is not a valid hostname" >&2
+            exit 1
+          fi
+      - name: Configure namespace and pull credentials
+        run: |
+          set -euo pipefail
+          kubectl apply -f infra/k3s/namespace.yaml
+          kubectl -n findr create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="$GHCR_USERNAME" \
+            --docker-password="$GHCR_PULL_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+      - name: Deploy admin
+        env:
+          IMAGE: ${{ env.ADMIN_IMAGE }}:${{ env.DEPLOY_SHA }}
+        run: |
+          set -euo pipefail
+          kubectl apply -f infra/k3s/admin/service.yaml
+          kubectl apply -f infra/k3s/admin/deployment.yaml
+          sed "s|admin.findr.example.com|$ADMIN_HOST|g" infra/k3s/admin/ingress.yaml | kubectl apply -f -
+          kubectl -n findr set image deployment/findr-admin admin="$IMAGE"
+          kubectl -n findr rollout status deployment/findr-admin --timeout=5m
+
+  release-mobile:
+    if: >-
+      ${{
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-v')) ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.component == 'mobile')
+      }}
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: release-mobile-production
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+      MOBILE_VERSION_INPUT: ${{ inputs.mobile_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - id: version
+        name: Validate release version
+        run: |
+          set -euo pipefail
+          if [[ -z "$EXPO_TOKEN" || -z "$EAS_PROJECT_ID" ]]; then
+            echo "EXPO_TOKEN and EAS_PROJECT_ID must be configured in the production environment" >&2
+            exit 1
+          fi
+
+          if [[ "$GITHUB_REF" == refs/tags/mobile-v* ]]; then
+            tag="$GITHUB_REF_NAME"
+            version="${GITHUB_REF_NAME#mobile-v}"
+            git fetch origin main
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+              echo "Mobile release tags must point to a commit on main" >&2
+              exit 1
+            }
+          else
+            version="${MOBILE_VERSION_INPUT#mobile-v}"
+            tag="mobile-v$version"
+          fi
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Mobile version must use MAJOR.MINOR.PATCH" >&2
+            exit 1
+          fi
+
+          VERSION="$version" node -e 'const fs=require("fs"); const path="apps/mobile/app.json"; const json=JSON.parse(fs.readFileSync(path,"utf8")); json.expo.version=process.env.VERSION; fs.writeFileSync(path, JSON.stringify(json, null, 2)+"\n");'
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Build Android APK
+        working-directory: apps/mobile
+        run: eas build --platform android --profile github-release --non-interactive --wait --json > "$RUNNER_TEMP/eas-build.json"
+      - name: Download APK
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          artifact_url="$(jq -r '.[0].artifacts.buildUrl // empty' "$RUNNER_TEMP/eas-build.json")"
+          if [[ -z "$artifact_url" ]]; then
+            echo "EAS did not return an Android build URL" >&2
+            exit 1
+          fi
+          curl --fail --location "$artifact_url" --output "findr-$VERSION.apk"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "$TAG" "findr-$VERSION.apk#Findr Android APK" --target "$GITHUB_SHA" --title "Findr Mobile $VERSION" --generate-notes

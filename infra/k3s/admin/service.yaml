@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: findr-admin
+  namespace: findr
+spec:
+  selector:
+    app: findr-admin
+  ports:
+    - port: 80
+      targetPort: 3000
