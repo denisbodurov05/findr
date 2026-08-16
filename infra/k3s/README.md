@@ -73,11 +73,12 @@ The Firebase web values are public build configuration rather than credentials;
 keep authorization rules in Firebase and the API. The database password,
 registry token, and Expo token must remain secrets.
 
-The EAS project also needs the mobile `EXPO_PUBLIC_*` values configured in its
-`production` environment because EAS performs the native build remotely. Map
-the shared Firebase values to the equivalent `EXPO_PUBLIC_FIREBASE_*` names,
-use `FIREBASE_MOBILE_APP_ID` for `EXPO_PUBLIC_FIREBASE_APP_ID`, and set
-`EXPO_PUBLIC_HOST` to the public API URL.
+The mobile release job maps these shared values into the `EXPO_PUBLIC_*` names
+in its temporary `github-release` EAS profile. It uses
+`FIREBASE_MOBILE_APP_ID` for `EXPO_PUBLIC_FIREBASE_APP_ID` and expands
+`API_HOST` into the HTTPS `EXPO_PUBLIC_HOST` URL. The resulting profile is sent
+to the remote EAS builder, so the values do not need to be duplicated in the
+Expo dashboard.
 
 ## TLS
 

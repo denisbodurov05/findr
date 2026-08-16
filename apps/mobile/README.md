@@ -57,9 +57,10 @@ Join our community of developers creating universal apps.
 
 ## Releases
 
-Native builds use EAS. Configure the project ID through `EAS_PROJECT_ID` and
-store the `EXPO_PUBLIC_*` application configuration in the EAS `production`
-environment.
+Native builds use EAS. Configure the project ID through `EAS_PROJECT_ID`. The
+GitHub deployment workflow maps the shared production variables to the
+`EXPO_PUBLIC_*` names in the temporary EAS build profile, so they do not need
+to be duplicated in the Expo dashboard.
 
 The GitHub deployment workflow creates an installable Android APK and attaches
 it to a GitHub Release when either:
