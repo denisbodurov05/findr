@@ -56,7 +56,6 @@ jobs:
 
   deploy-api:
     needs: publish-api-image
-    if: ${{ always() && needs.publish-api-image.result == 'success' }}
     runs-on: [self-hosted, linux, k3s]
     environment: production
     concurrency:
@@ -170,7 +169,6 @@ jobs:
 
   deploy-admin:
     needs: publish-admin-image
-    if: ${{ always() && needs.publish-admin-image.result == 'success' }}
     runs-on: [self-hosted, linux, k3s]
     environment: production
     concurrency:
