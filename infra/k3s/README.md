@@ -58,14 +58,15 @@ Variables:
 
 - `GHCR_USERNAME`: account that owns `GHCR_PULL_TOKEN` (defaults to repository owner)
 - `FIREBASE_PROJECT_ID`: Firebase project verified by the API
+- `FIREBASE_API_KEY`: shared Firebase browser API key
+- `FIREBASE_AUTH_DOMAIN`: shared Firebase authentication domain
+- `FIREBASE_STORAGE_BUCKET`: shared Firebase storage bucket
+- `FIREBASE_MESSAGING_SENDER_ID`: shared Firebase messaging sender ID
+- `FIREBASE_ADMIN_APP_ID`: Firebase web app ID used by the admin panel
+- `FIREBASE_MOBILE_APP_ID`: Firebase app ID used by the Expo application
+- `FIREBASE_MEASUREMENT_ID`: optional Firebase Analytics measurement ID
 - `API_HOST`: public API hostname, for example `api.findr.example.com`
 - `ADMIN_HOST`: public admin hostname, for example `admin.findr.example.com`
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
 - `EAS_PROJECT_ID`: Expo project's EAS UUID
 
 The Firebase web values are public build configuration rather than credentials;
@@ -73,7 +74,10 @@ keep authorization rules in Firebase and the API. The database password,
 registry token, and Expo token must remain secrets.
 
 The EAS project also needs the mobile `EXPO_PUBLIC_*` values configured in its
-`production` environment because EAS performs the native build remotely.
+`production` environment because EAS performs the native build remotely. Map
+the shared Firebase values to the equivalent `EXPO_PUBLIC_FIREBASE_*` names,
+use `FIREBASE_MOBILE_APP_ID` for `EXPO_PUBLIC_FIREBASE_APP_ID`, and set
+`EXPO_PUBLIC_HOST` to the public API URL.
 
 ## TLS
 

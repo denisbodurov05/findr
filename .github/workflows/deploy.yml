@@ -1,10 +1,6 @@
 name: Deploy
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       component:
@@ -33,52 +29,8 @@ env:
   ADMIN_IMAGE: ghcr.io/${{ github.repository_owner }}/findr-admin
 
 jobs:
-  changes:
-    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    outputs:
-      api: ${{ steps.components.outputs.api }}
-      admin: ${{ steps.components.outputs.admin }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 2
-      - id: components
-        name: Detect deployable components
-        env:
-          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          set -euo pipefail
-          api=false
-          admin=false
-
-          while IFS= read -r file; do
-            case "$file" in
-              apps/api/*|infra/k3s/api/*|infra/k3s/postgres/*|infra/k3s/namespace.yaml|infra/k3s/kustomization.yaml|.github/workflows/deploy.yml)
-                api=true
-                ;;
-            esac
-            case "$file" in
-              apps/admin/*|libs/types/*|package.json|package-lock.json|infra/k3s/admin/*|infra/k3s/namespace.yaml|infra/k3s/kustomization.yaml|.github/workflows/deploy.yml)
-                admin=true
-                ;;
-            esac
-          done < <(git diff --name-only "${DEPLOY_SHA}^1" "$DEPLOY_SHA")
-
-          echo "api=$api" >> "$GITHUB_OUTPUT"
-          echo "admin=$admin" >> "$GITHUB_OUTPUT"
-
   publish-api-image:
-    needs: changes
-    if: >-
-      ${{
-        always() &&
-        (
-          (github.event_name == 'workflow_run' && needs.changes.outputs.api == 'true') ||
-          (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.component == 'api' || inputs.component == 'api-and-admin'))
-        )
-      }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.component == 'api' || inputs.component == 'api-and-admin') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -86,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -100,7 +52,7 @@ jobs:
           push: true
           tags: |
             ${{ env.API_IMAGE }}:latest
-            ${{ env.API_IMAGE }}:${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+            ${{ env.API_IMAGE }}:${{ github.sha }}
 
   deploy-api:
     needs: publish-api-image
@@ -111,7 +63,9 @@ jobs:
       group: deploy-api-production
       cancel-in-progress: false
     env:
-      DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      DEPLOY_SHA: ${{ github.sha }}
+      KUBECONFIG: /home/deploy/.kube/config
+      K3S_CONFIG_FILE: /dev/null
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
       GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
@@ -165,31 +119,23 @@ jobs:
           kubectl -n findr rollout status deployment/findr-api --timeout=5m
 
   publish-admin-image:
-    needs: changes
-    if: >-
-      ${{
-        always() &&
-        (
-          (github.event_name == 'workflow_run' && needs.changes.outputs.admin == 'true') ||
-          (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.component == 'admin' || inputs.component == 'api-and-admin'))
-        )
-      }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.component == 'admin' || inputs.component == 'api-and-admin') }}
     runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read
       packages: write
     env:
-      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
-      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ vars.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-      NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ vars.FIREBASE_STORAGE_BUCKET }}
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.FIREBASE_MESSAGING_SENDER_ID }}
+      NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.FIREBASE_ADMIN_APP_ID }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Validate public Firebase configuration
         run: |
           set -euo pipefail
@@ -217,10 +163,10 @@ jobs:
             NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
             NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
             NEXT_PUBLIC_FIREBASE_APP_ID=${{ env.NEXT_PUBLIC_FIREBASE_APP_ID }}
-            DEPLOYMENT_VERSION=${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+            DEPLOYMENT_VERSION=${{ github.sha }}
           tags: |
             ${{ env.ADMIN_IMAGE }}:latest
-            ${{ env.ADMIN_IMAGE }}:${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+            ${{ env.ADMIN_IMAGE }}:${{ github.sha }}
 
   deploy-admin:
     needs: publish-admin-image
@@ -231,7 +177,9 @@ jobs:
       group: deploy-admin-production
       cancel-in-progress: false
     env:
-      DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      DEPLOY_SHA: ${{ github.sha }}
+      KUBECONFIG: /home/deploy/.kube/config
+      K3S_CONFIG_FILE: /dev/null
       GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
       GHCR_USERNAME: ${{ vars.GHCR_USERNAME || github.repository_owner }}
       ADMIN_HOST: ${{ vars.ADMIN_HOST }}
