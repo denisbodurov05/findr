@@ -122,7 +122,7 @@ public class PathfindingService {
             endPoint.setId(shortestRoute.get(i + 1));
             twoPointPathDto.setEnd(endPoint);
 
-            Point[] points = new Point[path.size() - 2];
+            Point[] points = new Point[Math.max(0, path.size() - 2)];
             for (int j = 1; j < path.size() - 1; j++) {
                 points[j - 1] = new Point(path.get(j)[0], path.get(j)[1]);
             }

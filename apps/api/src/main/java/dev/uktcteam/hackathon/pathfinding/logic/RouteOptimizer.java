@@ -137,23 +137,16 @@ public class RouteOptimizer {
 
     public ArrayList<List<int[]>> getShortestRoutePath(String[][] matrix, ArrayList<String> shortestRoute) {
 
-        Set<String> elementsSet = new HashSet<>(shortestRoute);
-
-        HashMap<String, int[]> elementCoords = new HashMap<>();
-
-        for (int i = 0; i < matrix.length; i++) {
-            for (int j = 0; j < matrix[i].length; j++) {
-                if (elementsSet.contains(matrix[i][j])) {
-                    elementCoords.put(matrix[i][j], new int[] { i, j });
-                }
-            }
-        }
+        HashMap<String, int[]> elementCoords = coordinateMatrix.findRouteStops(matrix);
 
         ArrayList<List<int[]>> shortestRoutePath = new ArrayList<>();
 
         for (int index = 0; index < shortestRoute.size() - 1; index++) {
             List<int[]> path = coordinateMatrix.bfsWithPath(matrix, elementCoords.get(shortestRoute.get(index)),
                     elementCoords.get(shortestRoute.get(index + 1)));
+            if (path == null) {
+                throw new IllegalArgumentException("The requested stops are not connected by a walkable route");
+            }
             shortestRoutePath.add(path);
         }
         return shortestRoutePath;
